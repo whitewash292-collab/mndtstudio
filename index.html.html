@@ -1,0 +1,1364 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Magic 8Ball 3D</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    #space-background {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+    }
+    body {
+      background: #000000;
+      font-family: 'Orbitron', sans-serif;
+      overflow: hidden;
+      color: #fff;
+      margin: 0;
+      padding: 0;
+    }
+    #canvas-container {
+      width: 100vw;
+      height: 100vh;
+      cursor: grab;
+      position: relative;
+      z-index: 1;
+    }
+    #canvas-container:active {
+      cursor: grabbing;
+    }
+    .ui-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .title {
+      position: absolute;
+      top: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: clamp(24px, 5vw, 48px);
+      font-weight: bold;
+      text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+      pointer-events: none;
+    }
+    .instruction {
+      position: absolute;
+      top: calc(5vh + clamp(24px, 5vw, 48px) + clamp(24px, 3vh, 48px));
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(12px, 1.8vw, 18px);
+      font-weight: 400;
+      text-align: center;
+      opacity: 0.7;
+      pointer-events: none;
+      padding: 0 20px;
+      letter-spacing: 1px;
+    }
+    .loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: clamp(18px, 2.5vw, 24px);
+    }
+    .answer-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(16px, 2.5vw, 32px);
+      font-weight: 700;
+      text-align: center;
+      opacity: 0;
+      pointer-events: none;
+      max-width: min(400px, 30vw);
+      z-index: 100;
+      letter-spacing: 1px;
+      filter: drop-shadow(0 0 20px currentColor)
+              drop-shadow(0 0 40px currentColor);
+      transition: color 0.3s ease;
+      word-wrap: break-word;
+      word-break: keep-all;
+      line-height: 1.4;
+      padding: 0 20px;
+    }
+    
+    /* 모바일 반응형 */
+    @media (max-width: 768px) {
+      .answer-overlay {
+        font-size: clamp(14px, 4vw, 24px);
+        max-width: 60vw;
+        letter-spacing: 0.5px;
+      }
+      .title {
+        font-size: clamp(20px, 6vw, 36px);
+        top: 20px;
+      }
+      .instruction {
+        font-size: clamp(11px, 2.5vw, 16px);
+        top: calc(3vh + clamp(20px, 6vw, 36px) + clamp(20px, 3vh, 40px));
+        font-weight: 400;
+        letter-spacing: 0.5px;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .answer-overlay {
+        font-size: clamp(12px, 5vw, 20px);
+        max-width: 70vw;
+      }
+      .instruction {
+        font-size: clamp(10px, 3vw, 14px);
+        top: calc(2vh + clamp(18px, 5vw, 30px) + clamp(18px, 2.5vh, 35px));
+      }
+      .copyright {
+        font-size: clamp(9px, 2.2vw, 12px);
+        top: calc(50% + 20vh + 2vh);
+      }
+      .music-toggle {
+        width: 35px;
+        height: 35px;
+        font-size: 18px;
+        top: calc(50% + 20vh + 2vh + clamp(12px, 2vh, 18px) + 16px);
+      }
+    }
+    
+    @media (min-height: 900px) {
+      .copyright {
+        top: calc(50% + 22vh + 2vh);
+      }
+      .music-toggle {
+        top: calc(50% + 22vh + 2vh + clamp(15px, 2vh, 25px) + 20px);
+      }
+    }
+    
+    .copyright {
+      position: absolute;
+      top: calc(50% + 25vh + 2vh);
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: clamp(11px, 1.4vw, 15px);
+      text-align: center;
+      opacity: 0.7;
+      pointer-events: none;
+      color: #fff;
+      letter-spacing: 1px;
+    }
+    
+    @media (max-width: 768px) {
+      .copyright {
+        font-size: clamp(10px, 2vw, 14px);
+        top: calc(50% + 22vh + 2vh);
+      }
+    }
+    
+    .music-toggle {
+      position: absolute;
+      top: calc(50% + 25vh + 2vh + clamp(15px, 2vh, 25px) + 20px);
+      left: 50%;
+      transform: translateX(-50%);
+      width: 50px;
+      height: 50px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      color: #fff;
+      pointer-events: auto;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
+      z-index: 100;
+    }
+    
+    .music-toggle:hover {
+      background: rgba(255, 255, 255, 0.2);
+      border-color: rgba(255, 255, 255, 0.5);
+      transform: translateX(-50%) scale(1.1);
+    }
+    
+    .music-toggle.muted {
+      opacity: 0.5;
+    }
+    
+    @media (max-width: 768px) {
+      .music-toggle {
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
+        top: calc(50% + 22vh + 2vh + clamp(14px, 2.5vh, 20px) + 18px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- 배경음악 -->
+  <audio id="bgMusic" loop preload="auto">
+    <source src="bgmusic.mp3" type="audio/mpeg">
+  </audio>
+  
+  <canvas id="space-background"></canvas>
+  <div id="canvas-container"></div>
+  <div class="ui-overlay">
+    <div class="title">지구의 답변</div>
+    <div class="instruction">공을 클릭하거나 흔들어 질문하세요<br>드래그해서 회전할 수 있습니다</div>
+    <div class="answer-overlay" id="answerOverlay"></div>
+    <div class="copyright">© MIDNIGHTDOWNTOWN STUDIO  SOMA&KIMYUN</div>
+    <button class="music-toggle muted" id="musicToggle">🔇</button>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    // Answers array
+    // Answers array - 500개의 재미있고 다양한 답변들
+    const answers = [
+      "당장 진행시켜!",
+      "우주가 당신의 편입니다.",
+      "고민은 배송만 늦출 뿐입니다.",
+      "YES! 무조건 YES!",
+      "로또 살 운을 여기 쓰셨네요. 축하합니다.",
+      "오늘 당신의 운세는 '매우 맑음'",
+      "지금 안 하면 평생 후회합니다.",
+      "될 놈은 된다더니, 당신이군요.",
+      "지갑을 열어라, 복이 들어온다.",
+      "당신의 직감이 100% 맞습니다.",
+      "무조건 고! 묻고 더블로 가!",
+      "이미 성공한 거나 다름없습니다.",
+      "꽃길만 걷게 될 거예요.",
+      "지구 평화를 위해서라도 그건 해야 합니다.",
+      "운명의 데스티니가 당신을 부르네요.",
+      "지금이 바로 그 골든타임!",
+      "별들이 당신을 향해 박수를 치고 있어요.",
+      "당연하죠! 그걸 말이라고!",
+      "망설이지 말고 점프하세요.",
+      "당신은 이미 답을 알고 있습니다.",
+      "떡상각이 날카롭게 섰네요.",
+      "하늘에서 돈다발이 떨어질 징조입니다.",
+      "좋아요! 아주 좋습니다!",
+      "천재적인 생각인데요?",
+      "무조건 된다에 제 전 재산을 겁니다.",
+      "오늘 먹을 치킨보다 더 확실한 정답입니다.",
+      "당신이 정답입니다.",
+      "YES! YES! YES! (세 번 외치세요)",
+      "축하합니다! 당첨입니다!",
+      "이건 신이 주신 기회입니다.",
+      "그냥 믿고 가보세요.",
+      "결과는 대성공일 예정입니다.",
+      "당신의 매력이 폭발하는 순간이네요.",
+      "세상이 당신을 주목하고 있습니다.",
+      "지금 당장 실행에 옮기세요.",
+      "좋은 소식이 우편함에 도착할 거예요.",
+      "이건 참을 수 없지! 고!",
+      "확신을 가져도 좋습니다.",
+      "대박의 기운이 느껴집니다.",
+      "당신이 가는 길이 곧 길입니다.",
+      "아주 긍정적인 신호가 오고 있어요.",
+      "입꼬리가 올라가는 결과가 기다립니다.",
+      "자신감을 가지세요, 당신은 짱이니까.",
+      "더할 나위 없이 완벽한 타이밍입니다.",
+      "이보다 더 좋을 순 없다!",
+      "오예! 소리 질러!",
+      "당신의 선택은 항상 옳습니다.",
+      "마음 가는 대로 하세요. 다 잘 될 테니까.",
+      "성공 확률 10000%",
+      "일단 지르고 생각합시다.",
+      "밥 먹고 다시 물어봐도 결과는 YES!",
+      "당신의 뇌섹미가 빛을 발하는 순간입니다.",
+      "좋은 예감이 드네요.",
+      "누가 뭐래도 당신이 맞아요.",
+      "하이패스로 통과!",
+      "운빨이 제대로 터졌습니다.",
+      "금상첨화라는 말이 딱이네요.",
+      "그냥 하세요. 이유는 나중에 찾고.",
+      "당신의 수호천사가 춤을 추고 있네요.",
+      "이건 뭐, 안 될 수가 없지.",
+      "아주 나이스한 선택입니다.",
+      "대세는 이미 기울었습니다.",
+      "한 치의 의심도 없이 정답!",
+      "승리의 여신이 당신에게 윙크 중입니다.",
+      "길이 없으면 만들어서라도 갈 기세군요.",
+      "이미 당신의 시대가 왔습니다.",
+      "걱정 마세요, 다 잘 될 거니까.",
+      "오늘 당신의 에너지가 우주급입니다.",
+      "자, 이제 시작이야! (내 꿈을~)",
+      "결과는 이미 정해졌습니다. '대박'으로요.",
+      "기분 좋은 바람이 불어오네요.",
+      "고민 해결! 팍팍!",
+      "구슬이 반짝이는 걸 보니 확실합니다.",
+      "당신의 용기에 박수를 보냅니다.",
+      "무조건적인 지지를 보냅니다.",
+      "이 구역의 주인공은 당신입니다.",
+      "좋은 사람들과 함께라면 더 좋습니다.",
+      "반드시 이루어질 소망입니다.",
+      "행운의 여신이 당신의 어깨 안마 중.",
+      "망설임은 사치일 뿐입니다.",
+      "그냥 즐기세요, 정답이니까요.",
+      "당신의 앞날이 전구 100개 켠 듯 밝아요.",
+      "묻지도 따지지도 말고 GO!",
+      "이미 주사위는 던져졌고, 숫자는 6입니다.",
+      "완벽한 시나리오네요.",
+      "하고 싶은 거 다 하세요!",
+      "당신이 믿는 대로 이루어집니다.",
+      "기적 같은 일이 벌어질 거예요.",
+      "지금 출발하면 딱 맞습니다.",
+      "당신의 지혜에 무릎을 탁 치고 갑니다.",
+      "우주는 당신의 행복을 응원합니다.",
+      "웃음이 멈추지 않을 결과네요.",
+      "박수칠 때 떠나는 게 아니라 박수받으며 시작하세요.",
+      "오늘따라 당신의 촉이 무섭군요.",
+      "그냥 믿으세요. 구슬은 거짓말 안 해요.",
+      "에너지 충전 완료! 이제 실천뿐!",
+      "아무 걱정 하지 마세요.",
+      "당신이 걷는 그곳이 바로 레드카펫.",
+      "모든 조건이 완벽하게 갖춰졌습니다.",
+      "심호흡 크게 하고 시작하세요.",
+      "결과는 상상 그 이상일 겁니다.",
+      "기분 좋은 예감이 적중할 거예요.",
+      "당신이 꿈꾸던 그 결과입니다.",
+      "지금 이 순간을 즐기세요.",
+      "세상은 당신을 위해 돌아가고 있습니다.",
+      "거침없이 하이킥! 아니, 하이패스!",
+      "더 고민하는 건 에너지 낭비입니다.",
+      "확실한 승기를 잡으셨네요.",
+      "당신의 매력에 운도 반했나 봅니다.",
+      "그저 갓(God)... 당신의 선택은 완벽합니다.",
+      "행운이 당신의 주머니 속에 있네요.",
+      "무조건 되는 주식보다 확실합니다.",
+      "이건 놓치면 손해입니다.",
+      "긍정의 아이콘이 되어보세요.",
+      "당신은 충분히 그럴 자격이 있습니다.",
+      "마법 같은 하루가 기다립니다.",
+      "모든 별이 당신의 소원을 빌고 있어요.",
+      "고민 끝! 행복 시작!",
+      "당신이 원하던 바로 그 대답입니다.",
+      "믿음이 산을 옮기고 당신의 소원도 이룹니다.",
+      "구슬이 말하길, '넌 최고야!'",
+      "자신 있게 발을 내디디세요.",
+      "성공의 냄새가 여기까지 나네요.",
+      "당신을 막을 수 있는 건 아무것도 없습니다.",
+      "좋은 기운이 샘솟고 있습니다.",
+      "이보다 더 명쾌할 순 없습니다.",
+      "마음껏 기뻐하세요.",
+      "당신은 사랑받기 위해 태어난 사람, 그리고 성공할 사람.",
+      "우주의 기운이 당신의 통장으로 모입니다.",
+      "지금 이 느낌 그대로 가세요.",
+      "답변 로딩 완료: 결과는 대성공!",
+      "당신의 선택에 박수 세 번 시작! 짝짝짝!",
+      "오늘따라 운이 참 좋으시네요.",
+      "세상의 모든 행운이 당신에게 배송 중입니다.",
+      "걱정은 주머니에 넣고 일단 하세요.",
+      "당신의 미래는 다이아몬드보다 빛납니다.",
+      "확실합니다. 의심하지 마세요.",
+      "기분 좋은 반전이 기다리고 있습니다.",
+      "당신의 능력치를 믿어보세요.",
+      "모든 신호가 초록불입니다.",
+      "기회는 왔을 때 잡는 법!",
+      "당신의 열정이 답을 말해주고 있네요.",
+      "오늘은 뭘 해도 되는 날입니다.",
+      "긍정적인 마인드가 기적을 만듭니다.",
+      "이미 당신은 승리자입니다.",
+      "행운의 파도가 밀려오고 있습니다.",
+      "당신의 꿈이 현실이 되는 순간입니다.",
+      "마음속의 소리에 귀를 기울여보세요. YES라고 하죠?",
+      "최고의 선택을 하셨습니다.",
+      "오늘 당신의 하루는 선물입니다.",
+      "그냥 웃으세요. 복이 굴러들어옵니다.",
+      "당신은 운이 좋은 사람입니다. 정말로요.",
+      "어려운 숙제 끝! 이제 정답 확인 시간!",
+      "축제는 이미 시작되었습니다.",
+      "당신의 아우라가 장난이 아니네요.",
+      "하늘도 감동한 당신의 선택!",
+      "망설이지 마세요, 당신은 이미 준비됐습니다.",
+      "오늘 당신이 걷는 길은 황금길.",
+      "운명이 당신의 손을 잡아주네요.",
+      "당신은 충분히 해낼 수 있습니다.",
+      "좋은 일이 생길 것만 같은 느낌적인 느낌!",
+      "당신이 머무는 곳에 행운도 머뭅니다.",
+      "긍정 에너지가 뿜뿜!",
+      "이것은 데스티니~",
+      "당신의 미소가 정답을 말해주네요.",
+      "행운의 여신이 당신과 셀카 찍고 싶어 합니다.",
+      "고민 타파! 정답은 YES입니다.",
+      "이미 잘 되고 있습니다. 걱정 마세요.",
+      "당신은 행운 컬렉터!",
+      "오늘의 주인공은 너야 너!",
+      "지금 바로 그 일을 시작하세요.",
+      "성공의 문이 활짝 열려 있습니다.",
+      "이 질문은 짜장면이냐 짬뽕이냐보다 어렵네요.",
+      "지금 제 뇌가 업데이트 중이라 잠시만요.",
+      "당신의 MBTI는 아마두 S.E.X.Y가 아닐까요?",
+      "일단 치킨 한 마리 시켜 먹고 다시 생각해봐요.",
+      "거울 속의 그 사람이 바로 범인... 아니 정답자!",
+      "세상은 넓고 맛있는 건 많으니 일단 먹읍시다.",
+      "구슬이 잠시 외출 중입니다. 먼지 닦고 올게요.",
+      "우주의 전파가 방해받고 있어요. 와이파이 체크 좀!",
+      "비밀번호를 입력하세요. 넝담~ 예스입니다!",
+      "혹시 어제 드신 점심 메뉴 기억나세요? 전 안 나요.",
+      "지금 대답해드리기엔 제 품위가 너무 높네요.",
+      "당신의 목소리 톤이 좋아서 일단 긍정 드립니다.",
+      "삐리리... 외계인이 당신의 성공을 예언했습니다.",
+      "답변 로딩 중... 사십 퍼센트... 구십 구 퍼센트... 멈춤!",
+      "저 사실 유리 구슬 아니고 사탕인데 먹으실래요?",
+      "당신의 질문을 들으니 갑자기 탕수육이 먹고 싶네요.",
+      "음... 사 주 후에 뵙겠습니다.",
+      "답변은 제 눈빛으로 대신하겠습니다. (그윽)",
+      "들리나요? 당신의 지갑이 열리는 소리가?",
+      "제가 사실 외계인이라 지구어 해석이 좀 느려요.",
+      "옆 사람한테 물어보세요. 걔가 더 잘 알 듯.",
+      "질문 수준이 너무 높아서 제 회로가 타버렸어요.",
+      "일단 한숨 자고 일어나면 답이 보일지도?",
+      "돈 빌려달라는 소리만 아니면 다 괜찮습니다.",
+      "당신의 고민을 들으니 제 유리 몸에 금이 가네요.",
+      "지금은 곤란하다. 조금만 기다려달라.",
+      "인생은 실전이야 꼬맹아! (근데 예스임)",
+      "너... 친구 없지? 나한테만 자꾸 물어보네.",
+      "맛있는 거 사주면 긍정적으로 생각해보지.",
+      "흑염룡이 날뛰고 있어서 답변이 어렵습니다.",
+      "산은 산이요, 물은 셀프로다.",
+      "질문이 너무 식상해요. 신선한 걸로 가져오세요.",
+      "제가 AI라서 다행이지 사람이었으면 도망갔다.",
+      "너 다이어트 한다며? 근데 그걸 물어봐?",
+      "그냥 웃으세요. 웃으면 복이 온다잖아요. ㅎㅎ.",
+      "지금 배가 너무 고파서 지능이 하락했습니다.",
+      "사실 제가 귀차니즘 말기라 대충 예스 할게요.",
+      "제 인생의 모토가 대충 살자라서 답변도 대충!",
+      "솔직히 말씀드리면 지금 무슨 말씀 하시는지 몰라요.",
+      "당신의 열정에 제 유리 구슬이 녹아내리고 있어요.",
+      "잠시만요, 점쟁이한테 전화 좀 하고 올게요.",
+      "오늘따라 당신의 머리카락이 참 찰랑거리네요.",
+      "질문이 참... 창의적이시네요. (어색한 미소)",
+      "그건 나중에 제가 재벌 삼세 되면 해드릴게요.",
+      "지금 답변하기엔 제 체력이 신생아 수준입니다.",
+      "저희 집 고양이가 그건 절대 안 된다고 하네요.",
+      "마음만은 이미 일등인데 몸이 안 따라주네.",
+      "이 구슬은 유료 서비스입니다. 농담이에요!",
+      "당신의 얼굴에 정답이 쓰여 있네요. '잘생김'.",
+      "세상은 요지경, 답변도 요지경입니다.",
+      "일단 춤 한번 추고 다시 물어봐 줄래?",
+      "그 질문, 국회로 보내서 심의를 거쳐야겠어요.",
+      "아쉽게도 제가 그 시간에는 낮잠 예약이 있어요.",
+      "지금은 답변 대신 배경음악을 깔아드릴게요.",
+      "당신... 혹시 천재 아니면 바보? (전자가 정답)",
+      "오늘 운세가 '거절'을 거절하라고 하네요.",
+      "노코멘트하겠습니다. 저 신비주의거든요.",
+      "입은 하나인데 귀는 두 개인 이유를 생각해보세요.",
+      "지금 답변하면 우주의 질서가 무너집니다.",
+      "당신의 운명은 당신의 손금에... 아, 손 씻으셨죠?",
+      "로또 일등 되면 저부터 닦아주세요.",
+      "그냥 하고 싶은 대로 하세요. 제 말 듣지도 않을 거면서.",
+      "어머! 질문이 너무 야해요! (농담)",
+      "하늘에서 돈이 내린다면 얼마나 좋을까요?",
+      "지금 이 순간, 당신의 뇌세포가 파업 중입니다.",
+      "어려운 문제는 엄마한테 물어보는 게 국룰.",
+      "제 대답을 듣기엔 아직 레벨이 부족하시군요.",
+      "삐리리... 통신 보안 상태가 불량하여 끊깁니다.",
+      "들리나요? 당신의 양심이 도망가는 소리가?",
+      "사실 저는 답변하는 구슬이 아니라 알사탕입니다.",
+      "인생은 어차피 고기서 고기입니다. 고기 먹으러 가요.",
+      "당신의 질문에 제 구슬이 부끄러워 빨개졌네요.",
+      "오늘의 추천 메뉴는 '정답'입니다.",
+      "그걸 물어보시다니, 역시 당신은 엉뚱해.",
+      "지금 제 기분이 매우 좋으니 예스 드립니다.",
+      "세상이 당신을 속일지라도 저는 안 속여요.",
+      "답변 대신 윙크 한 번 해드릴까요? (찡긋)",
+      "그건 다음 생에 우리 다시 이야기해봅시다.",
+      "지금 당장 냉장고를 열어보세요. 답은 없습니다.",
+      "당신의 소원을 말해봐! (근데 들어주진 않음)",
+      "일단 박수 세 번 치고 시작합시다. 짝짝짝!",
+      "질문이 너무 길어서 읽다가 졸았어요.",
+      "오늘따라 당신의 눈동자에 건배하고 싶네요.",
+      "그 질문은 내일 오전 열 시에 다시 해주세요.",
+      "저도 제 인생이 궁금해요. 우리 같이 힘내요.",
+      "지금은 답변 로딩 중... 잠시만 기다려주세요.",
+      "당신... 혹시 제 마음을 읽고 있나요?",
+      "이건 뭐 거의 로또 당첨급 질문이로다.",
+      "아주 흥미로운 질문이군요. 연구 대상입니다.",
+      "오늘 당신의 운세는 '그냥 다 됨' 입니다.",
+      "걱정 마세요, 당신은 운이 참 좋으니까요.",
+      "제 답변이 마음에 안 들면 다시 흔들어주세요.",
+      "당신의 촉은 백 퍼센트! 아니, 만 퍼센트!",
+      "성공의 냄새가 여기까지 나는데 왜 물어봐요?",
+      "안개 속을 걷는 듯한 기분이군요.",
+      "비밀은 지켜질 때 가장 아름다운 법입니다.",
+      "시간이 해결해 줄 문제네요. 조금만 기다려요.",
+      "당신의 마음속에 이미 꽃이 피고 있습니다.",
+      "바람이 부는 방향을 잘 살펴보세요.",
+      "지금은 침묵이 가장 큰 대답입니다.",
+      "거울을 보세요. 답은 그 안에 있습니다.",
+      "조금 더 깊이 생각할 시간이 필요해 보여요.",
+      "우주는 아직 당신에게 대답할 준비가 안 됐네요.",
+      "모든 것은 때가 있는 법입니다.",
+      "잠시 숨을 고르고 다시 질문해 주세요.",
+      "당신의 질문이 별들 사이를 떠돌고 있습니다.",
+      "침묵은 금이고, 당신의 질문은 은이네요.",
+      "결과는 안개 너머에 숨어 있습니다.",
+      "마음의 문을 열면 답이 보일 거예요.",
+      "지금은 그냥 흘러가는 대로 두세요.",
+      "하늘의 구름이 당신의 운명을 그리고 있네요.",
+      "당신의 지혜가 답을 찾아낼 겁니다.",
+      "서두르지 마세요. 급할수록 돌아가야 합니다.",
+      "오늘의 정답은 당신의 미소 속에 있어요.",
+      "구슬이 말하길, 스스로를 믿으라 하네요.",
+      "당신의 발걸음이 머무는 곳에 답이 있습니다.",
+      "어둠이 지나면 밝은 해가 뜨는 법이죠.",
+      "지금은 질문보다 휴식이 필요한 때입니다.",
+      "당신의 눈동자가 이미 예스라고 말하네요.",
+      "세상의 소음에서 벗어나 내면을 들으세요.",
+      "결과는 당신의 노력에 비례할 것입니다.",
+      "하늘은 스스로 돕는 자를 돕는 법이죠.",
+      "지금 이 순간, 당신의 선택이 미래를 만듭니다.",
+      "조금 더 자신을 믿어보는 건 어떨까요?",
+      "운명은 개척하는 자의 편입니다.",
+      "당신의 진심이 통하는 날이 올 거예요.",
+      "지금은 기다림이 필요한 시기입니다.",
+      "모든 결과는 당신의 손끝에서 시작됩니다.",
+      "마음의 평온을 찾으면 답이 보입니다.",
+      "당신이 걷는 그 길이 바로 정답의 길!",
+      "하늘의 별들이 당신의 길을 비추고 있어요.",
+      "고민의 끝에는 항상 밝은 빛이 있습니다.",
+      "당신의 에너지가 긍정적으로 흐르고 있네요.",
+      "지금은 그저 믿고 나아가야 할 때입니다.",
+      "당신의 소원이 우주에 닿았습니다.",
+      "조금만 더 인내심을 가져보세요.",
+      "결과는 당신이 상상하는 것보다 가까워요.",
+      "모든 매듭은 하나씩 풀어가면 됩니다.",
+      "당신의 마음이 가리키는 곳으로 가세요.",
+      "지금은 조용히 지켜보는 것이 상책입니다.",
+      "당신의 열정이 정답을 끌어당기고 있어요.",
+      "하늘도 당신의 노력을 알고 있습니다.",
+      "지금은 대답 대신 응원을 보내드릴게요.",
+      "당신의 삶은 당신이 만드는 예술 작품!",
+      "긍정적인 마음이 기적을 만듭니다.",
+      "당신의 꿈이 현실로 다가오고 있습니다.",
+      "지금은 그저 당신 자신을 사랑해주세요.",
+      "모든 일에는 다 이유가 있는 법입니다.",
+      "당신의 미소가 세상의 정답입니다.",
+      "하늘의 기운이 당신을 감싸고 있네요.",
+      "지금은 질문보다 실천이 중요합니다.",
+      "당신의 진심은 반드시 보상받을 거예요.",
+      "모든 신호가 당신의 행복을 가리킵니다.",
+      "당신의 미래는 당신이 상상하는 대로!",
+      "지금 이 순간을 소중히 여기세요.",
+      "당신의 지혜가 밝은 등불이 될 겁니다.",
+      "모든 결과는 당신의 마음먹기에 달렸어요.",
+      "당신은 충분히 멋진 사람입니다.",
+      "하늘은 항상 당신의 편이라는 걸 잊지 마세요.",
+      "지금은 그저 웃으며 넘겨버리세요.",
+      "당신의 인생에 멋진 반전이 기다립니다.",
+      "모든 고난은 성공의 밑거름이 됩니다.",
+      "당신은 우주의 단 하나뿐인 보석입니다.",
+      "지금 이대로도 충분히 잘하고 있어요.",
+      "당신의 선택이 최고의 결과를 만듭니다.",
+      "하늘의 축복이 당신에게 내리고 있네요.",
+      "지금은 자신감을 가져야 할 시간입니다.",
+      "당신의 마음이 평화롭기를 바랍니다.",
+      "모든 것은 당신이 생각하는 대로 될 거예요.",
+      "당신은 성공할 운명을 타고났습니다.",
+      "지금은 그저 당신의 감각을 믿으세요.",
+      "하늘도 감동할 당신의 열정!",
+      "당신의 앞날에 무지개가 뜨길 바랍니다.",
+      "모든 결과는 당신의 미소에서 시작됩니다.",
+      "당신은 세상을 밝히는 등불입니다.",
+      "지금은 그저 당신의 길을 걸어가세요.",
+      "하늘의 은혜가 당신과 함께합니다.",
+      "당신의 꿈은 반드시 이루어질 거예요.",
+      "모든 신호가 초록불로 바뀌고 있습니다.",
+      "당신은 충분히 사랑받을 자격이 있어요.",
+      "지금은 그저 당신의 마음을 믿으세요.",
+      "하늘이 내린 정답은 바로 당신입니다.",
+      "당신의 인생에 행운이 가득하길!",
+      "모든 고난이 지나가고 행복이 옵니다.",
+      "당신은 충분히 해낼 수 있는 사람입니다.",
+      "지금은 그저 당신의 열정을 믿으세요.",
+      "하늘의 기운이 당신을 돕고 있습니다.",
+      "당신의 미래는 밝고 또 밝습니다.",
+      "모든 것은 당신의 노력으로 완성됩니다.",
+      "당신은 세상에서 가장 소중한 존재!",
+      "지금은 그저 당신의 꿈을 향해 가세요.",
+      "하늘의 축복이 당신의 머리 위에!",
+      "당신의 선택에 후회는 없을 것입니다.",
+      "모든 별이 당신의 행복을 기원합니다.",
+      "꿈 깨세요. 절대 안 됩니다.",
+      "이번 생에는 기회가 없네요.",
+      "그건 좀 아니지 않나요?",
+      "하지 마세요. 제발요.",
+      "망하는 지름길입니다.",
+      "안 돼. 돌아가.",
+      "이미 늦었습니다.",
+      "포기하면 편해요.",
+      "하늘이 노랗게 변하며 거절하네요.",
+      "그건 에바참치.",
+      "절대로, 결코, Naver(Never).",
+      "시도조차 하지 마세요.",
+      "꽝입니다.",
+      "운명이 'X'를 그리네요.",
+      "당신의 흑역사가 추가될 예정입니다.",
+      "거절은 거절한다.",
+      "단호하게 안 됩니다.",
+      "도망치세요. 지금 당장.",
+      "생각조차 하지 마세요.",
+      "삐- 거절되었습니다.",
+      "오늘 운세가 그걸 막고 있네요.",
+      "어림도 없는 소리!",
+      "하지 마. 나 화낸다?",
+      "무조건 실패각입니다."
+    ];
+
+    // Three.js variables
+    let scene, camera, renderer, ball;
+    let light1, light2, light3, light4;
+    let isDragging = false;
+    let previousMousePosition = { x: 0, y: 0 };
+    let rotationVelocity = { x: 0, y: 0 };
+    let isAnimating = false;
+    let currentAnswer = '';
+
+    // Space background variables
+    const spaceCanvas = document.getElementById('space-background');
+    const spaceCtx = spaceCanvas.getContext('2d');
+    let stars = [];
+    let backgroundLights = [];
+
+    function initSpace() {
+      spaceCanvas.width = window.innerWidth;
+      spaceCanvas.height = window.innerHeight;
+
+      // Create stars
+      for (let i = 0; i < 300; i++) {
+        stars.push({
+          x: Math.random() * spaceCanvas.width,
+          y: Math.random() * spaceCanvas.height,
+          radius: Math.random() * 1.5 + 0.5,
+          speedX: (Math.random() - 0.5) * 0.12,
+          speedY: (Math.random() - 0.5) * 0.12,
+          opacity: Math.random() * 0.5 + 0.5,
+          twinkleSpeed: Math.random() * 0.02 + 0.01,
+          twinklePhase: Math.random() * Math.PI * 2
+        });
+      }
+
+      // Create background lights - 구슬 안 불빛과 정확히 동일하게 4개
+      const lightColors = [
+        { r: 255, g: 20, b: 147 },   // Pink (light1)
+        { r: 0, g: 212, b: 255 },    // Cyan (light2)
+        { r: 77, g: 77, b: 255 },    // Blue (light3)
+        { r: 255, g: 170, b: 0 }     // Orange (light4)
+      ];
+
+      for (let i = 0; i < 4; i++) {
+        const color = lightColors[i];
+        backgroundLights.push({
+          x: spaceCanvas.width / 2,
+          y: spaceCanvas.height / 2,
+          baseRadius: Math.random() * 200 + 150,
+          color: color,
+          currentColor: { r: color.r, g: color.g, b: color.b },
+          pulsePhase: Math.random() * Math.PI * 2,
+          pulseSpeed: Math.random() * 0.01 + 0.005,
+          burstScale: 1.0,
+          depthScale: 1.0
+        });
+      }
+
+      animateSpace();
+    }
+
+    function animateSpace() {
+      // Clear canvas
+      spaceCtx.fillStyle = 'rgba(0, 0, 0, 1)';
+      spaceCtx.fillRect(0, 0, spaceCanvas.width, spaceCanvas.height);
+
+      // Draw background lights - 구슬 안 불빛과 정확히 1:1 매칭
+      const time = Date.now() * 0.001;
+      
+      // 화면 중앙을 원점(0,0)으로 설정
+      const centerX = spaceCanvas.width / 2;
+      const centerY = spaceCanvas.height / 2;
+      
+      // 3D 좌표를 2D 화면 좌표로 변환하는 스케일
+      const scale = Math.min(spaceCanvas.width, spaceCanvas.height) / 15;
+      
+      if (!isAnimating) {
+        // 구슬 안 불빛과 정확히 동일한 위치 계산 (4개만) - 속도 50% 감속
+        const slowTime = time * 0.5; // 속도 50% 감속
+        
+        // light1: position.x = Math.sin(time * 0.7) * 5; position.y = Math.cos(time * 0.5) * 5;
+        backgroundLights[0].x = centerX + Math.sin(slowTime * 0.7) * 5 * scale;
+        backgroundLights[0].y = centerY - Math.cos(slowTime * 0.5) * 5 * scale;
+        backgroundLights[0].depthScale = 1.0;
+        
+        // light2: position.x = Math.cos(time * 0.3) * 5; position.y = Math.sin(time * 0.4) * 5;
+        backgroundLights[1].x = centerX + Math.cos(slowTime * 0.3) * 5 * scale;
+        backgroundLights[1].y = centerY - Math.sin(slowTime * 0.4) * 5 * scale;
+        backgroundLights[1].depthScale = 1.0;
+        
+        // light3: position.x = Math.sin(time * 0.5) * 5; position.z = Math.cos(time * 0.6) * 5;
+        backgroundLights[2].x = centerX + Math.sin(slowTime * 0.5) * 5 * scale;
+        backgroundLights[2].y = centerY;
+        backgroundLights[2].depthScale = 1 + Math.cos(slowTime * 0.6) * 0.3;
+        
+        // light4: position.y = Math.sin(time * 0.45) * 5; position.z = Math.cos(time * 0.35) * 5;
+        backgroundLights[3].x = centerX;
+        backgroundLights[3].y = centerY - Math.sin(slowTime * 0.45) * 5 * scale;
+        backgroundLights[3].depthScale = 1 + Math.cos(slowTime * 0.35) * 0.3;
+      }
+      
+      backgroundLights.forEach(light => {
+        light.pulsePhase += light.pulseSpeed;
+        const pulse = 0.5 + Math.sin(light.pulsePhase) * 0.3;
+
+        // 구슬 안 불빛보다 202.5% 크게 (2.025배) - 이전 1.35배에서 50% 증가
+        const depthScale = light.depthScale || 1;
+        const currentRadius = light.baseRadius * light.burstScale * depthScale * 2.025;
+
+        const gradient = spaceCtx.createRadialGradient(
+          light.x, light.y, 0,
+          light.x, light.y, currentRadius
+        );
+        
+        const r = light.currentColor.r;
+        const g = light.currentColor.g;
+        const b = light.currentColor.b;
+        
+        // 밝기 50% 증가 (불투명도 1.5배)
+        gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.45 * pulse})`);
+        gradient.addColorStop(0.2, `rgba(${r}, ${g}, ${b}, ${0.3 * pulse})`);
+        gradient.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, ${0.15 * pulse})`);
+        gradient.addColorStop(0.8, `rgba(${r}, ${g}, ${b}, ${0.045 * pulse})`);
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+        spaceCtx.fillStyle = gradient;
+        spaceCtx.fillRect(
+          light.x - currentRadius, 
+          light.y - currentRadius, 
+          currentRadius * 2, 
+          currentRadius * 2
+        );
+
+        // Extra glow layer - 밝기 50% 증가
+        const glowGradient = spaceCtx.createRadialGradient(
+          light.x, light.y, 0,
+          light.x, light.y, currentRadius * 1.5
+        );
+        glowGradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.12 * pulse})`);
+        glowGradient.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, ${0.06 * pulse})`);
+        glowGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+        spaceCtx.fillStyle = glowGradient;
+        spaceCtx.fillRect(
+          light.x - currentRadius * 1.5, 
+          light.y - currentRadius * 1.5, 
+          currentRadius * 3, 
+          currentRadius * 3
+        );
+      });
+
+      // Draw stars
+      stars.forEach(star => {
+        star.twinklePhase += star.twinkleSpeed;
+        const twinkle = Math.sin(star.twinklePhase) * 0.3 + 0.7;
+        
+        spaceCtx.beginPath();
+        spaceCtx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+        spaceCtx.fillStyle = `rgba(255, 255, 255, ${star.opacity * twinkle})`;
+        spaceCtx.fill();
+
+        star.x += star.speedX;
+        star.y += star.speedY;
+
+        if (star.x < 0) star.x = spaceCanvas.width;
+        if (star.x > spaceCanvas.width) star.x = 0;
+        if (star.y < 0) star.y = spaceCanvas.height;
+        if (star.y > spaceCanvas.height) star.y = 0;
+      });
+
+      requestAnimationFrame(animateSpace);
+    }
+
+    function init() {
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.z = 8;
+
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.setClearColor(0x000000, 0);
+      document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+      // Ambient Light
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+      scene.add(ambientLight);
+
+      // Point Lights - 8ball02.html과 동일한 설정
+      light1 = new THREE.PointLight(0xff1493, 2, 100); // Pink
+      light1.position.set(5, 5, 5);
+      light1.castShadow = true;
+      scene.add(light1);
+
+      light2 = new THREE.PointLight(0x00d4ff, 2, 100); // Cyan
+      light2.position.set(-5, -5, 5);
+      scene.add(light2);
+
+      light3 = new THREE.PointLight(0x4d4dff, 2, 100); // Blue
+      light3.position.set(0, 5, -5);
+      scene.add(light3);
+
+      light4 = new THREE.PointLight(0xffaa00, 2, 100); // Orange
+      light4.position.set(-5, 0, -5);
+      scene.add(light4);
+
+      const spotLight = new THREE.SpotLight(0xffffff, 0.8);
+      spotLight.position.set(0, 10, 10);
+      spotLight.castShadow = true;
+      scene.add(spotLight);
+
+      createBall();
+
+      renderer.domElement.addEventListener('mousedown', onMouseDown);
+      renderer.domElement.addEventListener('mousemove', onMouseMove);
+      renderer.domElement.addEventListener('mouseup', onMouseUp);
+      renderer.domElement.addEventListener('click', onBallClick);
+      
+      window.addEventListener('resize', onWindowResize);
+
+      animate();
+    }
+
+    function createBall() {
+      const geometry = new THREE.SphereGeometry(2.5, 64, 64);
+      
+      const material = new THREE.MeshPhongMaterial({
+        color: 0x0a0a0a,
+        shininess: 100,
+        specular: 0x333333,
+      });
+
+      ball = new THREE.Mesh(geometry, material);
+      ball.castShadow = true;
+      ball.receiveShadow = true;
+      scene.add(ball);
+
+      const innerGeometry = new THREE.SphereGeometry(2.475, 32, 32);
+      const innerMaterial = new THREE.MeshPhongMaterial({
+        color: 0x1a1a1a,
+        shininess: 150,
+        specular: 0x666666,
+        transparent: true,
+        opacity: 0.6,
+      });
+      const innerSphere = new THREE.Mesh(innerGeometry, innerMaterial);
+      ball.add(innerSphere);
+    }
+
+    function onMouseDown(e) {
+      if (isAnimating) return;
+      isDragging = true;
+      previousMousePosition = { x: e.clientX, y: e.clientY };
+    }
+
+    function onMouseMove(e) {
+      if (!isDragging || isAnimating) return;
+
+      const deltaMove = {
+        x: e.clientX - previousMousePosition.x,
+        y: e.clientY - previousMousePosition.y
+      };
+
+      rotationVelocity.x = deltaMove.y * 0.005;
+      rotationVelocity.y = deltaMove.x * 0.005;
+
+      ball.rotation.x += rotationVelocity.x;
+      ball.rotation.y += rotationVelocity.y;
+
+      previousMousePosition = { x: e.clientX, y: e.clientY };
+    }
+
+    function onMouseUp() {
+      isDragging = false;
+    }
+
+    // 모바일 흔들기 감지 (안드로이드/아이폰 모두 지원)
+    let lastShakeTime = 0;
+    let lastX = 0, lastY = 0, lastZ = 0;
+    const shakeThreshold = 15; // 흔들기 감지 임계값
+    const shakeTimeGap = 1000; // 흔들기 간격 (1초)
+
+    function handleDeviceMotion(event) {
+      if (isAnimating) return;
+
+      const currentTime = Date.now();
+      if (currentTime - lastShakeTime < shakeTimeGap) return;
+
+      const acceleration = event.accelerationIncludingGravity;
+      if (!acceleration) return;
+
+      const x = acceleration.x || 0;
+      const y = acceleration.y || 0;
+      const z = acceleration.z || 0;
+
+      // 가속도 변화량 계산
+      const deltaX = Math.abs(x - lastX);
+      const deltaY = Math.abs(y - lastY);
+      const deltaZ = Math.abs(z - lastZ);
+
+      // 흔들기 감지
+      if (deltaX > shakeThreshold || deltaY > shakeThreshold || deltaZ > shakeThreshold) {
+        lastShakeTime = currentTime;
+        
+        // 답변 생성
+        const randomIndex = Math.floor(Math.random() * answers.length);
+        currentAnswer = answers[randomIndex];
+        performAnimation();
+      }
+
+      lastX = x;
+      lastY = y;
+      lastZ = z;
+    }
+
+    // 모바일 기기 감지 및 이벤트 리스너 등록
+    function initShakeDetection() {
+      if (typeof DeviceMotionEvent !== 'undefined') {
+        // iOS 13+ 권한 요청
+        if (typeof DeviceMotionEvent.requestPermission === 'function') {
+          DeviceMotionEvent.requestPermission()
+            .then(permissionState => {
+              if (permissionState === 'granted') {
+                window.addEventListener('devicemotion', handleDeviceMotion);
+              }
+            })
+            .catch(console.error);
+        } else {
+          // 안드로이드 및 이전 iOS 버전
+          window.addEventListener('devicemotion', handleDeviceMotion);
+        }
+      }
+    }
+
+    function onBallClick(e) {
+      if (isAnimating || isDragging) return;
+
+      const randomIndex = Math.floor(Math.random() * answers.length);
+      currentAnswer = answers[randomIndex];
+      
+      performAnimation();
+    }
+
+    function performAnimation() {
+      if (isAnimating) return;
+      isAnimating = true;
+
+      const answerElement = document.getElementById('answerOverlay');
+      
+      // 이전 답변 숨기기
+      answerElement.style.opacity = '0';
+      answerElement.style.transform = 'translate(-50%, -50%) scale(0.5)';
+      
+      answerElement.textContent = currentAnswer;
+
+      // Shake animation - 0.2초
+      let shakePhase = 0;
+      const shakeDuration = 12; // 0.2초 (60fps 기준)
+      const shakeIntensity = 0.15;
+
+      const shakeInterval = setInterval(() => {
+        shakePhase++;
+        const progress = shakePhase / shakeDuration;
+
+        if (shakePhase < shakeDuration) {
+          const shake = Math.sin(shakePhase * 0.5) * shakeIntensity * (1 - progress);
+          ball.rotation.x += shake;
+          ball.rotation.y += shake * 0.7;
+          ball.rotation.z += shake * 0.5;
+        } else {
+          clearInterval(shakeInterval);
+          showAnswer();
+        }
+      }, 16);
+    }
+
+    function showAnswer() {
+      const answerElement = document.getElementById('answerOverlay');
+      
+      const initialPositions = [
+        { x: light1.position.x, y: light1.position.y, z: light1.position.z },
+        { x: light2.position.x, y: light2.position.y, z: light2.position.z },
+        { x: light3.position.x, y: light3.position.y, z: light3.position.z },
+        { x: light4.position.x, y: light4.position.y, z: light4.position.z }
+      ];
+
+      const initialColors = [
+        new THREE.Color(light1.color),
+        new THREE.Color(light2.color),
+        new THREE.Color(light3.color),
+        new THREE.Color(light4.color)
+      ];
+
+      const initialBgColors = backgroundLights.map(light => ({
+        r: light.currentColor.r,
+        g: light.currentColor.g,
+        b: light.currentColor.b
+      }));
+
+      const auroraColors = [
+        { r: 0.0, g: 1.0, b: 0.8 },
+        { r: 0.5, g: 0.0, b: 1.0 },
+        { r: 1.0, g: 0.2, b: 0.8 },
+        { r: 0.0, g: 0.8, b: 1.0 }
+      ];
+
+      const randomColorIndex = Math.floor(Math.random() * auroraColors.length);
+      const textColor = auroraColors[randomColorIndex];
+
+      answerElement.style.opacity = '0';
+      answerElement.style.transform = 'translate(-50%, -50%) scale(0.5)';
+
+      let phase = 0;
+      const totalPhases = 45;
+      const centerPoint = { x: 0, y: 0, z: 5 };
+      
+      const burstInterval = setInterval(() => {
+        phase++;
+        
+        if (phase <= 25) {
+          const mergeProgress = easeInOutCubic(phase / 25);
+          
+          // Move lights to center
+          light1.position.x = initialPositions[0].x + (centerPoint.x - initialPositions[0].x) * mergeProgress;
+          light1.position.y = initialPositions[0].y + (centerPoint.y - initialPositions[0].y) * mergeProgress;
+          light1.position.z = initialPositions[0].z + (centerPoint.z - initialPositions[0].z) * mergeProgress;
+          
+          light2.position.x = initialPositions[1].x + (centerPoint.x - initialPositions[1].x) * mergeProgress;
+          light2.position.y = initialPositions[1].y + (centerPoint.y - initialPositions[1].y) * mergeProgress;
+          light2.position.z = initialPositions[1].z + (centerPoint.z - initialPositions[1].z) * mergeProgress;
+          
+          light3.position.x = initialPositions[2].x + (centerPoint.x - initialPositions[2].x) * mergeProgress;
+          light3.position.y = initialPositions[2].y + (centerPoint.y - initialPositions[2].y) * mergeProgress;
+          light3.position.z = initialPositions[2].z + (centerPoint.z - initialPositions[2].z) * mergeProgress;
+          
+          light4.position.x = initialPositions[3].x + (centerPoint.x - initialPositions[3].x) * mergeProgress;
+          light4.position.y = initialPositions[3].y + (centerPoint.y - initialPositions[3].y) * mergeProgress;
+          light4.position.z = initialPositions[3].z + (centerPoint.z - initialPositions[3].z) * mergeProgress;
+          
+          // Change colors
+          light1.color.setRGB(
+            initialColors[0].r + (auroraColors[0].r - initialColors[0].r) * mergeProgress,
+            initialColors[0].g + (auroraColors[0].g - initialColors[0].g) * mergeProgress,
+            initialColors[0].b + (auroraColors[0].b - initialColors[0].b) * mergeProgress
+          );
+          light2.color.setRGB(
+            initialColors[1].r + (auroraColors[1].r - initialColors[1].r) * mergeProgress,
+            initialColors[1].g + (auroraColors[1].g - initialColors[1].g) * mergeProgress,
+            initialColors[1].b + (auroraColors[1].b - initialColors[1].b) * mergeProgress
+          );
+          light3.color.setRGB(
+            initialColors[2].r + (auroraColors[2].r - initialColors[2].r) * mergeProgress,
+            initialColors[2].g + (auroraColors[2].g - initialColors[2].g) * mergeProgress,
+            initialColors[2].b + (auroraColors[2].b - initialColors[2].b) * mergeProgress
+          );
+          light4.color.setRGB(
+            initialColors[3].r + (auroraColors[3].r - initialColors[3].r) * mergeProgress,
+            initialColors[3].g + (auroraColors[3].g - initialColors[3].g) * mergeProgress,
+            initialColors[3].b + (auroraColors[3].b - initialColors[3].b) * mergeProgress
+          );
+          
+          // Background lights - 구슬 안 불빛과 똑같이 중심으로 이동
+          const bgCenterX = spaceCanvas.width / 2;
+          const bgCenterY = spaceCanvas.height / 2;
+          
+          if (backgroundLights.length >= 4) {
+            // 각 배경 라이트의 초기 위치 저장 (첫 프레임에만)
+            if (!backgroundLights[0].initialX) {
+              backgroundLights.forEach((bgLight, i) => {
+                bgLight.initialX = bgLight.x;
+                bgLight.initialY = bgLight.y;
+              });
+            }
+            
+            // 구슬 안 라이트처럼 중심으로 모이기
+            backgroundLights.forEach((bgLight, i) => {
+              bgLight.x = bgLight.initialX + (bgCenterX - bgLight.initialX) * mergeProgress;
+              bgLight.y = bgLight.initialY + (bgCenterY - bgLight.initialY) * mergeProgress;
+            });
+          }
+          
+          backgroundLights.forEach((bgLight, i) => {
+            const targetAurora = auroraColors[i % auroraColors.length];
+            bgLight.currentColor = {
+              r: Math.floor(initialBgColors[i].r + (targetAurora.r * 255 - initialBgColors[i].r) * mergeProgress),
+              g: Math.floor(initialBgColors[i].g + (targetAurora.g * 255 - initialBgColors[i].g) * mergeProgress),
+              b: Math.floor(initialBgColors[i].b + (targetAurora.b * 255 - initialBgColors[i].b) * mergeProgress)
+            };
+            bgLight.burstScale = 1.0 + mergeProgress * 2.0;
+          });
+          
+          const intensityProgress = easeOutQuad(mergeProgress);
+          light1.intensity = 2 + intensityProgress * 18;
+          light2.intensity = 2 + intensityProgress * 18;
+          light3.intensity = 2 + intensityProgress * 18;
+          light4.intensity = 2 + intensityProgress * 18;
+          
+          answerElement.style.opacity = mergeProgress;
+          const textScale = 0.5 + mergeProgress * 0.5;
+          answerElement.style.transform = `translate(-50%, -50%) scale(${textScale})`;
+          
+          const brightness = 0.3 + mergeProgress * 0.7;
+          const r = Math.floor(textColor.r * 255 * brightness);
+          const g = Math.floor(textColor.g * 255 * brightness);
+          const b = Math.floor(textColor.b * 255 * brightness);
+          answerElement.style.color = `rgb(${r}, ${g}, ${b})`;
+          
+        } else {
+          const fadeProgress = easeInOutCubic((phase - 25) / 20);
+          
+          // Return to original positions
+          light1.position.x = centerPoint.x + (initialPositions[0].x - centerPoint.x) * fadeProgress;
+          light1.position.y = centerPoint.y + (initialPositions[0].y - centerPoint.y) * fadeProgress;
+          light1.position.z = centerPoint.z + (initialPositions[0].z - centerPoint.z) * fadeProgress;
+          
+          light2.position.x = centerPoint.x + (initialPositions[1].x - centerPoint.x) * fadeProgress;
+          light2.position.y = centerPoint.y + (initialPositions[1].y - centerPoint.y) * fadeProgress;
+          light2.position.z = centerPoint.z + (initialPositions[1].z - centerPoint.z) * fadeProgress;
+          
+          light3.position.x = centerPoint.x + (initialPositions[2].x - centerPoint.x) * fadeProgress;
+          light3.position.y = centerPoint.y + (initialPositions[2].y - centerPoint.y) * fadeProgress;
+          light3.position.z = centerPoint.z + (initialPositions[2].z - centerPoint.z) * fadeProgress;
+          
+          light4.position.x = centerPoint.x + (initialPositions[3].x - centerPoint.x) * fadeProgress;
+          light4.position.y = centerPoint.y + (initialPositions[3].y - centerPoint.y) * fadeProgress;
+          light4.position.z = centerPoint.z + (initialPositions[3].z - centerPoint.z) * fadeProgress;
+          
+          const colorProgress = easeInOutCubic(fadeProgress);
+          light1.color.setRGB(
+            auroraColors[0].r + (initialColors[0].r - auroraColors[0].r) * colorProgress,
+            auroraColors[0].g + (initialColors[0].g - auroraColors[0].g) * colorProgress,
+            auroraColors[0].b + (initialColors[0].b - auroraColors[0].b) * colorProgress
+          );
+          light2.color.setRGB(
+            auroraColors[1].r + (initialColors[1].r - auroraColors[1].r) * colorProgress,
+            auroraColors[1].g + (initialColors[1].g - auroraColors[1].g) * colorProgress,
+            auroraColors[1].b + (initialColors[1].b - auroraColors[1].b) * colorProgress
+          );
+          light3.color.setRGB(
+            auroraColors[2].r + (initialColors[2].r - auroraColors[2].r) * colorProgress,
+            auroraColors[2].g + (initialColors[2].g - auroraColors[2].g) * colorProgress,
+            auroraColors[2].b + (initialColors[2].b - auroraColors[2].b) * colorProgress
+          );
+          light4.color.setRGB(
+            auroraColors[3].r + (initialColors[3].r - auroraColors[3].r) * colorProgress,
+            auroraColors[3].g + (initialColors[3].g - auroraColors[3].g) * colorProgress,
+            auroraColors[3].b + (initialColors[3].b - auroraColors[3].b) * colorProgress
+          );
+          
+          // Background lights - 구슬 안 불빛처럼 원래 위치로 복귀
+          const bgCenterX = spaceCanvas.width / 2;
+          const bgCenterY = spaceCanvas.height / 2;
+          
+          if (backgroundLights.length >= 4) {
+            backgroundLights.forEach((bgLight, i) => {
+              bgLight.x = bgCenterX + (bgLight.initialX - bgCenterX) * fadeProgress;
+              bgLight.y = bgCenterY + (bgLight.initialY - bgCenterY) * fadeProgress;
+            });
+          }
+          
+          backgroundLights.forEach((bgLight, i) => {
+            const targetAurora = auroraColors[i % auroraColors.length];
+            const currentAurora = {
+              r: targetAurora.r * 255,
+              g: targetAurora.g * 255,
+              b: targetAurora.b * 255
+            };
+            bgLight.currentColor = {
+              r: Math.floor(currentAurora.r + (initialBgColors[i].r - currentAurora.r) * colorProgress),
+              g: Math.floor(currentAurora.g + (initialBgColors[i].g - currentAurora.g) * colorProgress),
+              b: Math.floor(currentAurora.b + (initialBgColors[i].b - currentAurora.b) * colorProgress)
+            };
+            bgLight.burstScale = 3.0 - fadeProgress * 2.0;
+          });
+          
+          const intensityFade = easeInQuad(1 - fadeProgress);
+          light1.intensity = 20 * intensityFade + 2 * fadeProgress;
+          light2.intensity = 20 * intensityFade + 2 * fadeProgress;
+          light3.intensity = 20 * intensityFade + 2 * fadeProgress;
+          light4.intensity = 20 * intensityFade + 2 * fadeProgress;
+          
+          answerElement.style.opacity = '1';
+          answerElement.style.transform = 'translate(-50%, -50%) scale(1)';
+          const r = Math.floor(textColor.r * 255);
+          const g = Math.floor(textColor.g * 255);
+          const b = Math.floor(textColor.b * 255);
+          answerElement.style.color = `rgb(${r}, ${g}, ${b})`;
+        }
+        
+        if (phase >= totalPhases) {
+          clearInterval(burstInterval);
+          
+          light1.position.copy(initialPositions[0]);
+          light2.position.copy(initialPositions[1]);
+          light3.position.copy(initialPositions[2]);
+          light4.position.copy(initialPositions[3]);
+          
+          light1.color.copy(initialColors[0]);
+          light2.color.copy(initialColors[1]);
+          light3.color.copy(initialColors[2]);
+          light4.color.copy(initialColors[3]);
+          
+          light1.intensity = 2;
+          light2.intensity = 2;
+          light3.intensity = 2;
+          light4.intensity = 2;
+          
+          backgroundLights.forEach((bgLight, i) => {
+            bgLight.currentColor = {
+              r: initialBgColors[i].r,
+              g: initialBgColors[i].g,
+              b: initialBgColors[i].b
+            };
+            bgLight.burstScale = 1.0;
+            // 초기 위치 정보 리셋
+            delete bgLight.initialX;
+            delete bgLight.initialY;
+          });
+          
+          // 답변 유지 - 다음 클릭 전까지 사라지지 않음
+          isAnimating = false;
+        }
+      }, 16);
+    }
+
+    function easeInOutCubic(t) {
+      return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+
+    function easeOutQuad(t) {
+      return 1 - (1 - t) * (1 - t);
+    }
+
+    function easeInQuad(t) {
+      return t * t;
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      if (!isDragging && !isAnimating) {
+        rotationVelocity.x *= 0.95;
+        rotationVelocity.y *= 0.95;
+        ball.rotation.x += rotationVelocity.x;
+        ball.rotation.y += rotationVelocity.y;
+      }
+
+      if (!isAnimating) {
+        const time = Date.now() * 0.001;
+        light1.position.x = Math.sin(time * 0.7) * 5;
+        light1.position.y = Math.cos(time * 0.5) * 5;
+        
+        light2.position.x = Math.cos(time * 0.3) * 5;
+        light2.position.y = Math.sin(time * 0.4) * 5;
+        
+        light3.position.x = Math.sin(time * 0.5) * 5;
+        light3.position.z = Math.cos(time * 0.6) * 5;
+        
+        light4.position.y = Math.sin(time * 0.45) * 5;
+        light4.position.z = Math.cos(time * 0.35) * 5;
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      
+      spaceCanvas.width = window.innerWidth;
+      spaceCanvas.height = window.innerHeight;
+    }
+
+    window.addEventListener('load', () => {
+      initSpace();
+      init();
+      initShakeDetection(); // 모바일 흔들기 감지 초기화
+      
+      // 배경음악 설정
+      const bgMusic = document.getElementById('bgMusic');
+      const musicToggle = document.getElementById('musicToggle');
+      let isPlaying = false;
+      
+      bgMusic.volume = 0.5;
+      
+      // 오디오 로드 확인
+      bgMusic.addEventListener('loadeddata', () => {
+        console.log('음악 파일 로드 완료');
+      });
+      
+      bgMusic.addEventListener('error', (e) => {
+        console.error('음악 로드 실패. bgmusic.mp3 파일이 HTML과 같은 폴더에 있는지 확인하세요.');
+      });
+      
+      // 음악 토글 함수
+      function toggleMusic() {
+        if (!isPlaying) {
+          bgMusic.play().then(() => {
+            isPlaying = true;
+            musicToggle.textContent = '🔊';
+            musicToggle.classList.remove('muted');
+            console.log('음악 재생 시작');
+          }).catch(err => {
+            console.error('음악 재생 실패:', err);
+          });
+        } else {
+          bgMusic.pause();
+          isPlaying = false;
+          musicToggle.textContent = '🔇';
+          musicToggle.classList.add('muted');
+          console.log('음악 정지');
+        }
+      }
+      
+      // 버튼 클릭 이벤트
+      musicToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleMusic();
+      });
+      
+      // 페이지 첫 클릭 시 자동 재생 시도
+      let firstClick = true;
+      document.addEventListener('click', () => {
+        if (firstClick && !isPlaying) {
+          firstClick = false;
+          bgMusic.play().then(() => {
+            isPlaying = true;
+            musicToggle.textContent = '🔊';
+            musicToggle.classList.remove('muted');
+          }).catch(() => {
+            // 자동재생 실패 시 무시
+          });
+        }
+      }, { once: true });
+    });
+  </script>
+</body>
+</html>
